@@ -4,9 +4,11 @@
 package main // import "miniflux.app/v2"
 
 import (
+	"context"
+
 	"miniflux.app/v2/internal/cli"
 )
 
 func main() {
-	cli.Parse()
+	cli.Parse(context.Background())
 }

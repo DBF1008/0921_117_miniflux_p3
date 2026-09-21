@@ -17,13 +17,13 @@ import (
 )
 
 func (h *handler) updateSettings(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
 	}
 
-	creds, err := h.store.WebAuthnCredentialsByUserID(user.ID)
+	creds, err := h.store.WebAuthnCredentialsByUserID(r.Context(), user.ID)
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -44,12 +44,12 @@ func (h *handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 	view.Set("timezones", timezone.AvailableTimezones())
 	view.Set("menu", "settings")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 	view.Set("default_home_pages", model.HomePages())
 	view.Set("categories_sorting_options", model.CategoriesSortingOptions())
-	view.Set("countWebAuthnCerts", h.store.CountWebAuthnCredentialsByUserID(user.ID))
+	view.Set("countWebAuthnCerts", h.store.CountWebAuthnCredentialsByUserID(r.Context(), user.ID))
 	view.Set("webAuthnCerts", creds)
 
 	if validationErr := settingsForm.Validate(); validationErr != nil {
@@ -79,13 +79,13 @@ func (h *handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 		ExternalFontHosts:      model.OptionalString(settingsForm.ExternalFontHosts),
 	}
 
-	if validationErr := validator.ValidateUserModification(h.store, user.ID, userModificationRequest); validationErr != nil {
+	if validationErr := validator.ValidateUserModification(r.Context(), h.store, user.ID, userModificationRequest); validationErr != nil {
 		view.Set("errorMessage", validationErr.Translate(user.Language))
 		response.HTML(w, r, view.Render("settings"))
 		return
 	}
 
-	err = h.store.UpdateUser(settingsForm.Merge(user))
+	err = h.store.UpdateUser(r.Context(), settingsForm.Merge(user))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return

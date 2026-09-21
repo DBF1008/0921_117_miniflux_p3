@@ -4,6 +4,7 @@
 package worker // import "miniflux.app/v2/internal/worker"
 
 import (
+	"context"
 	"log/slog"
 	"sync"
 	"time"
@@ -21,7 +22,7 @@ type worker struct {
 }
 
 // Run processes feed refresh jobs from the channel until it is closed.
-func (w *worker) Run(c <-chan model.Job, wg *sync.WaitGroup) {
+func (w *worker) Run(ctx context.Context, c <-chan model.Job, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	slog.Debug("Worker started",
@@ -37,7 +38,7 @@ func (w *worker) Run(c <-chan model.Job, wg *sync.WaitGroup) {
 		)
 
 		startTime := time.Now()
-		localizedError := feedHandler.RefreshFeed(w.store, job.UserID, job.FeedID, false)
+		localizedError := feedHandler.RefreshFeed(ctx, w.store, job.UserID, job.FeedID, false)
 
 		if config.Opts.HasMetricsCollector() {
 			status := metric.StatusSuccess

@@ -4,6 +4,7 @@
 package storage // import "miniflux.app/v2/internal/storage"
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -72,7 +73,7 @@ func (b *batchBuilder) WithLimitPerHost(limit int) *batchBuilder {
 
 // FetchJobs retrieves a batch of jobs based on the conditions set in the builder.
 // When limitPerHost is set, it limits the number of jobs per feed hostname to prevent overwhelming a single host.
-func (b *batchBuilder) FetchJobs() (model.JobList, error) {
+func (b *batchBuilder) FetchJobs(ctx context.Context) (model.JobList, error) {
 	query := `SELECT id, user_id, feed_url FROM feeds`
 
 	if len(b.conditions) > 0 {
@@ -85,7 +86,7 @@ func (b *batchBuilder) FetchJobs() (model.JobList, error) {
 		query += " LIMIT " + strconv.Itoa(b.batchSize)
 	}
 
-	rows, err := b.db.Query(query, b.args...)
+	rows, err := b.db.QueryContext(ctx, query, b.args...)
 	if err != nil {
 		return nil, fmt.Errorf(`store: unable to fetch batch of jobs: %v`, err)
 	}

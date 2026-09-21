@@ -4,6 +4,7 @@
 package storage // import "miniflux.app/v2/internal/storage"
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -13,23 +14,23 @@ import (
 )
 
 // HasDuplicateFeverUsername checks if another user have the same Fever username.
-func (s *Storage) HasDuplicateFeverUsername(userID int64, feverUsername string) bool {
+func (s *Storage) HasDuplicateFeverUsername(ctx context.Context, userID int64, feverUsername string) bool {
 	query := `SELECT true FROM integrations WHERE user_id != $1 AND fever_username=$2 LIMIT 1`
 	var result bool
-	s.db.QueryRow(query, userID, feverUsername).Scan(&result)
+	s.db.QueryRowContext(ctx, query, userID, feverUsername).Scan(&result)
 	return result
 }
 
 // HasDuplicateGoogleReaderUsername checks if another user have the same Google Reader username.
-func (s *Storage) HasDuplicateGoogleReaderUsername(userID int64, googleReaderUsername string) bool {
+func (s *Storage) HasDuplicateGoogleReaderUsername(ctx context.Context, userID int64, googleReaderUsername string) bool {
 	query := `SELECT true FROM integrations WHERE user_id != $1 AND googlereader_username=$2 LIMIT 1`
 	var result bool
-	s.db.QueryRow(query, userID, googleReaderUsername).Scan(&result)
+	s.db.QueryRowContext(ctx, query, userID, googleReaderUsername).Scan(&result)
 	return result
 }
 
 // UserByFeverToken returns a user by using the Fever API token.
-func (s *Storage) UserByFeverToken(token string) (*model.User, error) {
+func (s *Storage) UserByFeverToken(ctx context.Context, token string) (*model.User, error) {
 	query := `
 		SELECT
 			users.id, users.username, users.is_admin, users.timezone
@@ -42,7 +43,7 @@ func (s *Storage) UserByFeverToken(token string) (*model.User, error) {
 	`
 
 	var user model.User
-	err := s.db.QueryRow(query, token).Scan(&user.ID, &user.Username, &user.IsAdmin, &user.Timezone)
+	err := s.db.QueryRowContext(ctx, query, token).Scan(&user.ID, &user.Username, &user.IsAdmin, &user.Timezone)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return nil, nil
@@ -54,7 +55,7 @@ func (s *Storage) UserByFeverToken(token string) (*model.User, error) {
 }
 
 // GoogleReaderUserCheckPassword validates the Google Reader hashed password.
-func (s *Storage) GoogleReaderUserCheckPassword(username, password string) error {
+func (s *Storage) GoogleReaderUserCheckPassword(ctx context.Context, username, password string) error {
 	var hash string
 
 	query := `
@@ -66,7 +67,7 @@ func (s *Storage) GoogleReaderUserCheckPassword(username, password string) error
 			integrations.googlereader_enabled='t' AND integrations.googlereader_username=$1
 	`
 
-	err := s.db.QueryRow(query, username).Scan(&hash)
+	err := s.db.QueryRowContext(ctx, query, username).Scan(&hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf(`store: unable to find this user: %s`, username)
 	} else if err != nil {
@@ -81,7 +82,7 @@ func (s *Storage) GoogleReaderUserCheckPassword(username, password string) error
 }
 
 // GoogleReaderUserGetIntegration returns part of the Google Reader parts of the integration struct.
-func (s *Storage) GoogleReaderUserGetIntegration(username string) (*model.Integration, error) {
+func (s *Storage) GoogleReaderUserGetIntegration(ctx context.Context, username string) (*model.Integration, error) {
 	var integration model.Integration
 
 	query := `
@@ -96,7 +97,7 @@ func (s *Storage) GoogleReaderUserGetIntegration(username string) (*model.Integr
 			integrations.googlereader_enabled='t' AND integrations.googlereader_username=$1
 	`
 
-	err := s.db.QueryRow(query, username).Scan(&integration.UserID, &integration.GoogleReaderEnabled, &integration.GoogleReaderUsername, &integration.GoogleReaderPassword)
+	err := s.db.QueryRowContext(ctx, query, username).Scan(&integration.UserID, &integration.GoogleReaderEnabled, &integration.GoogleReaderUsername, &integration.GoogleReaderPassword)
 	if errors.Is(err, sql.ErrNoRows) {
 		return &integration, fmt.Errorf(`store: unable to find this user: %s`, username)
 	} else if err != nil {
@@ -107,7 +108,7 @@ func (s *Storage) GoogleReaderUserGetIntegration(username string) (*model.Integr
 }
 
 // Integration returns user integration settings.
-func (s *Storage) Integration(userID int64) (*model.Integration, error) {
+func (s *Storage) Integration(ctx context.Context, userID int64) (*model.Integration, error) {
 	query := `
 		SELECT
 			user_id,
@@ -238,7 +239,7 @@ func (s *Storage) Integration(userID int64) (*model.Integration, error) {
 			user_id=$1
 	`
 	var integration model.Integration
-	err := s.db.QueryRow(query, userID).Scan(
+	err := s.db.QueryRowContext(ctx, query, userID).Scan(
 		&integration.UserID,
 		&integration.PinboardEnabled,
 		&integration.PinboardToken,
@@ -373,7 +374,7 @@ func (s *Storage) Integration(userID int64) (*model.Integration, error) {
 }
 
 // UpdateIntegration saves user integration settings.
-func (s *Storage) UpdateIntegration(integration *model.Integration) error {
+func (s *Storage) UpdateIntegration(ctx context.Context, integration *model.Integration) error {
 	query := `
 		UPDATE
 			integrations
@@ -502,7 +503,7 @@ func (s *Storage) UpdateIntegration(integration *model.Integration) error {
 		WHERE
 			user_id=$122
 	`
-	_, err := s.db.Exec(
+	_, err := s.db.ExecContext(ctx,
 		query,
 		integration.PinboardEnabled,
 		integration.PinboardToken,
@@ -636,7 +637,7 @@ func (s *Storage) UpdateIntegration(integration *model.Integration) error {
 }
 
 // HasSaveEntry returns true if the given user can save articles to third-parties.
-func (s *Storage) HasSaveEntry(userID int64) (result bool) {
+func (s *Storage) HasSaveEntry(ctx context.Context, userID int64) (result bool) {
 	query := `
 		SELECT
 			true
@@ -672,7 +673,7 @@ func (s *Storage) HasSaveEntry(userID int64) (result bool) {
 				archiveorg_enabled='t'
 			)
 	`
-	if err := s.db.QueryRow(query, userID).Scan(&result); err != nil {
+	if err := s.db.QueryRowContext(ctx, query, userID).Scan(&result); err != nil {
 		result = false
 	}
 

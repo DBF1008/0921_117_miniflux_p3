@@ -4,6 +4,7 @@
 package cli // import "miniflux.app/v2/internal/cli"
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -12,9 +13,9 @@ import (
 	"miniflux.app/v2/internal/validator"
 )
 
-func resetPassword(store *storage.Storage) {
+func resetPassword(ctx context.Context, store *storage.Storage) {
 	username, password := askCredentials()
-	user, err := store.UserByUsername(username)
+	user, err := store.UserByUsername(ctx, username)
 	if err != nil {
 		printErrorAndExit(err)
 	}
@@ -26,12 +27,12 @@ func resetPassword(store *storage.Storage) {
 	userModificationRequest := &model.UserModificationRequest{
 		Password: &password,
 	}
-	if validationErr := validator.ValidateUserModification(store, user.ID, userModificationRequest); validationErr != nil {
+	if validationErr := validator.ValidateUserModification(ctx, store, user.ID, userModificationRequest); validationErr != nil {
 		printErrorAndExit(validationErr.Error())
 	}
 
 	user.Password = password
-	if err := store.UpdateUser(user); err != nil {
+	if err := store.UpdateUser(ctx, user); err != nil {
 		printErrorAndExit(err)
 	}
 

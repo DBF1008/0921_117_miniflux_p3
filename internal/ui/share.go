@@ -15,7 +15,7 @@ import (
 
 func (h *handler) createSharedEntry(w http.ResponseWriter, r *http.Request) {
 	entryID := request.RouteInt64Param(r, "entryID")
-	shareCode, err := h.store.EntryShareCode(request.UserID(r), entryID)
+	shareCode, err := h.store.EntryShareCode(r.Context(), request.UserID(r), entryID)
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -26,7 +26,7 @@ func (h *handler) createSharedEntry(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) unshareEntry(w http.ResponseWriter, r *http.Request) {
 	entryID := request.RouteInt64Param(r, "entryID")
-	if err := h.store.UnshareEntry(request.UserID(r), entryID); err != nil {
+	if err := h.store.UnshareEntry(r.Context(), request.UserID(r), entryID); err != nil {
 		response.HTMLServerError(w, r, err)
 		return
 	}
@@ -45,7 +45,7 @@ func (h *handler) sharedEntry(w http.ResponseWriter, r *http.Request) {
 	response.NewBuilder(w, r).WithCaching(etag, 72*time.Hour, func(b *response.Builder) {
 		entry, err := h.store.NewAnonymousQueryBuilder().
 			WithShareCode(shareCode).
-			GetEntry()
+			GetEntry(r.Context())
 
 		if err != nil || entry == nil {
 			response.HTMLNotFound(w, r)

@@ -4,6 +4,7 @@
 package cli // import "miniflux.app/v2/internal/cli"
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
@@ -13,8 +14,8 @@ import (
 	"miniflux.app/v2/internal/storage"
 )
 
-func runCleanupTasks(store *storage.Storage) {
-	if nbWebSessions, err := store.CleanOldWebSessions(config.Opts.CleanupRemoveSessionsInterval()); err != nil {
+func runCleanupTasks(ctx context.Context, store *storage.Storage) {
+	if nbWebSessions, err := store.CleanOldWebSessions(ctx, config.Opts.CleanupRemoveSessionsInterval()); err != nil {
 		slog.Error("Unable to clean old web sessions", slog.Any("error", err))
 	} else {
 		slog.Info("Sessions cleanup completed",
@@ -23,7 +24,7 @@ func runCleanupTasks(store *storage.Storage) {
 	}
 
 	startTime := time.Now()
-	if rowsAffected, err := store.ArchiveEntries(model.EntryStatusRead, config.Opts.CleanupArchiveReadInterval(), config.Opts.CleanupArchiveBatchSize()); err != nil {
+	if rowsAffected, err := store.ArchiveEntries(ctx, model.EntryStatusRead, config.Opts.CleanupArchiveReadInterval(), config.Opts.CleanupArchiveBatchSize()); err != nil {
 		slog.Error("Unable to archive read entries", slog.Any("error", err))
 	} else {
 		slog.Info("Archiving read entries completed",
@@ -36,7 +37,7 @@ func runCleanupTasks(store *storage.Storage) {
 	}
 
 	startTime = time.Now()
-	if rowsAffected, err := store.ArchiveEntries(model.EntryStatusUnread, config.Opts.CleanupArchiveUnreadInterval(), config.Opts.CleanupArchiveBatchSize()); err != nil {
+	if rowsAffected, err := store.ArchiveEntries(ctx, model.EntryStatusUnread, config.Opts.CleanupArchiveUnreadInterval(), config.Opts.CleanupArchiveBatchSize()); err != nil {
 		slog.Error("Unable to archive unread entries", slog.Any("error", err))
 	} else {
 		slog.Info("Archiving unread entries completed",
@@ -48,7 +49,7 @@ func runCleanupTasks(store *storage.Storage) {
 		}
 	}
 
-	if nbIcons, err := store.CleanupOrphanIcons(); err != nil {
+	if nbIcons, err := store.CleanupOrphanIcons(ctx); err != nil {
 		slog.Error("Unable to clean orphan icons", slog.Any("error", err))
 	} else {
 		slog.Info("Orphan icons cleanup completed",

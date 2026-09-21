@@ -189,7 +189,7 @@ func TestValidateUserModificationAllowsClearingFilterRules(t *testing.T) {
 		KeepFilterEntryRules:  new(string),
 	}
 
-	if err := ValidateUserModification(nil, 0, req); err != nil {
+	if err := ValidateUserModification(t.Context(), nil, 0, req); err != nil {
 		t.Fatalf("expected empty filter rules to be accepted, got %v", err)
 	}
 }
@@ -199,7 +199,7 @@ func TestValidateUserModificationRejectsInvalidNonEmptyFilterRule(t *testing.T) 
 		BlockFilterEntryRules: new("EntryTitle=["),
 	}
 
-	if err := ValidateUserModification(nil, 0, req); err == nil {
+	if err := ValidateUserModification(t.Context(), nil, 0, req); err == nil {
 		t.Fatal("expected invalid non-empty filter rules to be rejected")
 	}
 }

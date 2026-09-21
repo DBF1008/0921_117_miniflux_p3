@@ -16,7 +16,7 @@ func (h *handler) saveEntry(w http.ResponseWriter, r *http.Request) {
 
 	entry, err := h.store.NewEntryQueryBuilder(request.UserID(r)).
 		WithEntryIDs(entryID).
-		GetEntry()
+		GetEntry(r.Context())
 	if err != nil {
 		response.JSONServerError(w, r, err)
 		return
@@ -27,7 +27,7 @@ func (h *handler) saveEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userIntegrations, err := h.store.Integration(request.UserID(r))
+	userIntegrations, err := h.store.Integration(r.Context(), request.UserID(r))
 	if err != nil {
 		response.JSONServerError(w, r, err)
 		return

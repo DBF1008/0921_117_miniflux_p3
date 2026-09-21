@@ -20,17 +20,17 @@ import (
 	"miniflux.app/v2/internal/worker"
 )
 
-func startDaemon(store *storage.Storage) {
+func startDaemon(ctx context.Context, store *storage.Storage) {
 	slog.Debug("Starting daemon...")
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 	signal.Notify(stop, syscall.SIGTERM)
 
-	pool := worker.NewPool(store, config.Opts.WorkerPoolSize())
+	pool := worker.NewPool(ctx, store, config.Opts.WorkerPoolSize())
 
 	if config.Opts.HasSchedulerService() && !config.Opts.HasMaintenanceMode() {
-		runScheduler(store, pool)
+		runScheduler(ctx, store, pool)
 	}
 
 	var httpServers []*http.Server
@@ -62,7 +62,7 @@ func startDaemon(store *storage.Storage) {
 				}
 
 				for {
-					if err := store.Ping(); err != nil {
+					if err := store.Ping(ctx); err != nil {
 						slog.Error("Unable to ping database", slog.Any("error", err))
 					} else {
 						systemd.SdNotify(systemd.SdNotifyWatchdog)

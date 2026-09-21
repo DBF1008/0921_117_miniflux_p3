@@ -20,13 +20,13 @@ import (
 )
 
 func (h *handler) submitSubscription(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
 	}
 
-	categories, err := h.store.Categories(user.ID)
+	categories, err := h.store.Categories(r.Context(), user.ID)
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -36,7 +36,7 @@ func (h *handler) submitSubscription(w http.ResponseWriter, r *http.Request) {
 	v.Set("categories", categories)
 	v.Set("menu", "feeds")
 	v.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	v.Set("countUnread", navMetadata.CountUnread)
 	v.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 	v.Set("defaultUserAgent", config.Opts.HTTPClientUserAgent())
@@ -52,7 +52,7 @@ func (h *handler) submitSubscription(w http.ResponseWriter, r *http.Request) {
 
 	var rssBridgeURL string
 	var rssBridgeToken string
-	if intg, err := h.store.Integration(user.ID); err == nil && intg != nil && intg.RSSBridgeEnabled {
+	if intg, err := h.store.Integration(r.Context(), user.ID); err == nil && intg != nil && intg.RSSBridgeEnabled {
 		rssBridgeURL = intg.RSSBridgeURL
 		rssBridgeToken = intg.RSSBridgeToken
 	}
@@ -89,7 +89,7 @@ func (h *handler) submitSubscription(w http.ResponseWriter, r *http.Request) {
 		v.Set("errorMessage", locale.NewLocalizedError("error.subscription_not_found").Translate(user.Language))
 		response.HTML(w, r, v.Render("add_subscription"))
 	case n == 1 && subscriptionFinder.IsFeedAlreadyDownloaded():
-		feed, localizedError := feedHandler.CreateFeedFromSubscriptionDiscovery(h.store, user.ID, &model.FeedCreationRequestFromSubscriptionDiscovery{
+		feed, localizedError := feedHandler.CreateFeedFromSubscriptionDiscovery(r.Context(), h.store, user.ID, &model.FeedCreationRequestFromSubscriptionDiscovery{
 			Content:      subscriptionFinder.FeedResponseInfo().Content,
 			ETag:         subscriptionFinder.FeedResponseInfo().ETag,
 			LastModified: subscriptionFinder.FeedResponseInfo().LastModified,
@@ -124,7 +124,7 @@ func (h *handler) submitSubscription(w http.ResponseWriter, r *http.Request) {
 
 		response.HTMLRedirect(w, r, h.routePath("/feed/%d/entries", feed.ID))
 	case n == 1 && !subscriptionFinder.IsFeedAlreadyDownloaded():
-		feed, localizedError := feedHandler.CreateFeed(h.store, user.ID, &model.FeedCreationRequest{
+		feed, localizedError := feedHandler.CreateFeed(r.Context(), h.store, user.ID, &model.FeedCreationRequest{
 			CategoryID:                  subscriptionForm.CategoryID,
 			FeedURL:                     subscriptions[0].URL,
 			Crawler:                     subscriptionForm.Crawler,
@@ -159,7 +159,7 @@ func (h *handler) submitSubscription(w http.ResponseWriter, r *http.Request) {
 		view.Set("form", subscriptionForm)
 		view.Set("menu", "feeds")
 		view.Set("user", user)
-		navMetadata, _ := h.store.GetNavMetadata(user.ID)
+		navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 		view.Set("countUnread", navMetadata.CountUnread)
 		view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 		view.Set("hasProxyConfigured", config.Opts.HasHTTPClientProxyURLConfigured())

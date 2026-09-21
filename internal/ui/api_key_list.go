@@ -12,13 +12,13 @@ import (
 )
 
 func (h *handler) showAPIKeysPage(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
 	}
 
-	apiKeys, err := h.store.APIKeys(user.ID)
+	apiKeys, err := h.store.APIKeys(r.Context(), user.ID)
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -28,7 +28,7 @@ func (h *handler) showAPIKeysPage(w http.ResponseWriter, r *http.Request) {
 	view.Set("apiKeys", apiKeys)
 	view.Set("menu", "settings")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 

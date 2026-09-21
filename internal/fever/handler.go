@@ -78,13 +78,13 @@ func (h *feverHandler) handleGroups(w http.ResponseWriter, r *http.Request) {
 		slog.Int64("user_id", userID),
 	)
 
-	categories, err := h.store.Categories(userID)
+	categories, err := h.store.Categories(r.Context(), userID)
 	if err != nil {
 		response.JSONServerError(w, r, err)
 		return
 	}
 
-	feeds, err := h.store.Feeds(userID)
+	feeds, err := h.store.Feeds(r.Context(), userID)
 	if err != nil {
 		response.JSONServerError(w, r, err)
 		return
@@ -130,7 +130,7 @@ func (h *feverHandler) handleFeeds(w http.ResponseWriter, r *http.Request) {
 		slog.Int64("user_id", userID),
 	)
 
-	feeds, err := h.store.Feeds(userID)
+	feeds, err := h.store.Feeds(r.Context(), userID)
 	if err != nil {
 		response.JSONServerError(w, r, err)
 		return
@@ -185,7 +185,7 @@ func (h *feverHandler) handleFavicons(w http.ResponseWriter, r *http.Request) {
 		slog.Int64("user_id", userID),
 	)
 
-	icons, err := h.store.Icons(userID)
+	icons, err := h.store.Icons(r.Context(), userID)
 	if err != nil {
 		response.JSONServerError(w, r, err)
 		return
@@ -286,14 +286,14 @@ func (h *feverHandler) handleItems(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	entries, err := builder.GetEntries()
+	entries, err := builder.GetEntries(r.Context())
 	if err != nil {
 		response.JSONServerError(w, r, err)
 		return
 	}
 
 	result.Total, err = h.store.NewEntryQueryBuilder(userID).
-		CountEntries()
+		CountEntries(r.Context())
 	if err != nil {
 		response.JSONServerError(w, r, err)
 		return
@@ -344,7 +344,7 @@ func (h *feverHandler) handleUnreadItems(w http.ResponseWriter, r *http.Request)
 
 	rawEntryIDs, err := h.store.NewEntryQueryBuilder(userID).
 		WithStatuses(model.EntryStatusUnread).
-		GetEntryIDs()
+		GetEntryIDs(r.Context())
 	if err != nil {
 		response.JSONServerError(w, r, err)
 		return
@@ -377,7 +377,7 @@ func (h *feverHandler) handleSavedItems(w http.ResponseWriter, r *http.Request) 
 
 	entryIDs, err := h.store.NewEntryQueryBuilder(userID).
 		WithStarred(true).
-		GetEntryIDs()
+		GetEntryIDs(r.Context())
 	if err != nil {
 		response.JSONServerError(w, r, err)
 		return
@@ -411,7 +411,7 @@ func (h *feverHandler) handleWriteItems(w http.ResponseWriter, r *http.Request) 
 
 	entry, err := h.store.NewEntryQueryBuilder(userID).
 		WithEntryIDs(entryID).
-		GetEntry()
+		GetEntry(r.Context())
 	if err != nil {
 		response.JSONServerError(w, r, err)
 		return
@@ -432,24 +432,24 @@ func (h *feverHandler) handleWriteItems(w http.ResponseWriter, r *http.Request) 
 			slog.Int64("user_id", userID),
 			slog.Int64("entry_id", entryID),
 		)
-		h.store.SetEntriesStatus(userID, []int64{entryID}, model.EntryStatusRead)
+		h.store.SetEntriesStatus(r.Context(), userID, []int64{entryID}, model.EntryStatusRead)
 	case "unread":
 		slog.Debug("[Fever] Mark entry as unread",
 			slog.Int64("user_id", userID),
 			slog.Int64("entry_id", entryID),
 		)
-		h.store.SetEntriesStatus(userID, []int64{entryID}, model.EntryStatusUnread)
+		h.store.SetEntriesStatus(r.Context(), userID, []int64{entryID}, model.EntryStatusUnread)
 	case "saved":
 		slog.Debug("[Fever] Mark entry as saved",
 			slog.Int64("user_id", userID),
 			slog.Int64("entry_id", entryID),
 		)
-		if err := h.store.ToggleStarred(userID, entryID); err != nil {
+		if err := h.store.ToggleStarred(r.Context(), userID, entryID); err != nil {
 			response.JSONServerError(w, r, err)
 			return
 		}
 
-		settings, err := h.store.Integration(userID)
+		settings, err := h.store.Integration(r.Context(), userID)
 		if err != nil {
 			response.JSONServerError(w, r, err)
 			return
@@ -463,7 +463,7 @@ func (h *feverHandler) handleWriteItems(w http.ResponseWriter, r *http.Request) 
 			slog.Int64("user_id", userID),
 			slog.Int64("entry_id", entryID),
 		)
-		if err := h.store.ToggleStarred(userID, entryID); err != nil {
+		if err := h.store.ToggleStarred(r.Context(), userID, entryID); err != nil {
 			response.JSONServerError(w, r, err)
 			return
 		}
@@ -493,7 +493,7 @@ func (h *feverHandler) handleWriteFeeds(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := h.store.MarkFeedAsRead(userID, feedID, before); err != nil {
+	if err := h.store.MarkFeedAsRead(r.Context(), userID, feedID, before); err != nil {
 		response.JSONServerError(w, r, err)
 		return
 	}
@@ -518,13 +518,13 @@ func (h *feverHandler) handleWriteGroups(w http.ResponseWriter, r *http.Request)
 	var err error
 
 	if groupID == 0 {
-		err = h.store.MarkAllAsRead(userID)
+		err = h.store.MarkAllAsRead(r.Context(), userID)
 		slog.Debug("[Fever] Mark all items as read",
 			slog.Int64("user_id", userID),
 		)
 	} else {
 		before := time.Unix(request.FormInt64Value(r, "before"), 0)
-		err = h.store.MarkCategoryAsRead(userID, groupID, before)
+		err = h.store.MarkCategoryAsRead(r.Context(), userID, groupID, before)
 		slog.Debug("[Fever] Mark group as read before a given date",
 			slog.Int64("user_id", userID),
 			slog.Int64("group_id", groupID),

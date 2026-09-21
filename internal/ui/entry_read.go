@@ -13,7 +13,7 @@ import (
 )
 
 func (h *handler) showReadEntryPage(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -23,7 +23,7 @@ func (h *handler) showReadEntryPage(w http.ResponseWriter, r *http.Request) {
 
 	entry, err := h.store.NewEntryQueryBuilder(user.ID).
 		WithEntryIDs(entryID).
-		GetEntry()
+		GetEntry(r.Context())
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -41,7 +41,7 @@ func (h *handler) showReadEntryPage(w http.ResponseWriter, r *http.Request) {
 
 	prevEntry, nextEntry, err := h.store.NewEntryPaginationBuilder(user.ID, entry.ID, "changed_at", "desc").
 		WithStatus(model.EntryStatusRead).
-		Entries()
+		Entries(r.Context())
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -65,7 +65,7 @@ func (h *handler) showReadEntryPage(w http.ResponseWriter, r *http.Request) {
 	view.Set("prevEntryRoute", prevEntryRoute)
 	view.Set("menu", "history")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 	view.Set("hasSaveEntry", navMetadata.HasSaveEntry)

@@ -13,7 +13,7 @@ import (
 )
 
 func (h *handler) showStarredCategoryEntryPage(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -25,7 +25,7 @@ func (h *handler) showStarredCategoryEntryPage(w http.ResponseWriter, r *http.Re
 	entry, err := h.store.NewEntryQueryBuilder(user.ID).
 		WithCategoryID(categoryID).
 		WithEntryIDs(entryID).
-		GetEntry()
+		GetEntry(r.Context())
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -37,7 +37,7 @@ func (h *handler) showStarredCategoryEntryPage(w http.ResponseWriter, r *http.Re
 	}
 
 	if entry.ShouldMarkAsReadOnView(user) {
-		err = h.store.SetEntriesStatus(user.ID, []int64{entry.ID}, model.EntryStatusRead)
+		err = h.store.SetEntriesStatus(r.Context(), user.ID, []int64{entry.ID}, model.EntryStatusRead)
 		if err != nil {
 			response.HTMLServerError(w, r, err)
 			return
@@ -54,7 +54,7 @@ func (h *handler) showStarredCategoryEntryPage(w http.ResponseWriter, r *http.Re
 	prevEntry, nextEntry, err := h.store.NewEntryPaginationBuilder(user.ID, entry.ID, user.EntryOrder, user.EntryDirection).
 		WithCategoryID(categoryID).
 		WithStarred().
-		Entries()
+		Entries(r.Context())
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -78,7 +78,7 @@ func (h *handler) showStarredCategoryEntryPage(w http.ResponseWriter, r *http.Re
 	view.Set("prevEntryRoute", prevEntryRoute)
 	view.Set("menu", "categories")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 	view.Set("hasSaveEntry", navMetadata.HasSaveEntry)
