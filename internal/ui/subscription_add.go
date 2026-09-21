@@ -14,13 +14,13 @@ import (
 )
 
 func (h *handler) showAddSubscriptionPage(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
 	}
 
-	categories, err := h.store.Categories(user.ID)
+	categories, err := h.store.Categories(r.Context(), user.ID)
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -30,7 +30,7 @@ func (h *handler) showAddSubscriptionPage(w http.ResponseWriter, r *http.Request
 	view.Set("categories", categories)
 	view.Set("menu", "feeds")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 	view.Set("defaultUserAgent", config.Opts.HTTPClientUserAgent())

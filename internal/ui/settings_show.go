@@ -16,7 +16,7 @@ import (
 )
 
 func (h *handler) showSettingsPage(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -50,7 +50,7 @@ func (h *handler) showSettingsPage(w http.ResponseWriter, r *http.Request) {
 		OpenExternalLinksInNewTab: user.OpenExternalLinksInNewTab,
 	}
 
-	creds, err := h.store.WebAuthnCredentialsByUserID(user.ID)
+	creds, err := h.store.WebAuthnCredentialsByUserID(r.Context(), user.ID)
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -69,13 +69,13 @@ func (h *handler) showSettingsPage(w http.ResponseWriter, r *http.Request) {
 	view.Set("timezones", timezone.AvailableTimezones())
 	view.Set("menu", "settings")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 	view.Set("default_home_pages", model.HomePages())
 	view.Set("categories_sorting_options", model.CategoriesSortingOptions())
 	view.Set("maxEntriesPerPage", model.MaxEntryLimit)
-	view.Set("countWebAuthnCerts", h.store.CountWebAuthnCredentialsByUserID(user.ID))
+	view.Set("countWebAuthnCerts", h.store.CountWebAuthnCredentialsByUserID(r.Context(), user.ID))
 	view.Set("webAuthnCerts", creds)
 
 	response.HTML(w, r, view.Render("settings"))

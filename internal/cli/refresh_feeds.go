@@ -4,6 +4,7 @@
 package cli // import "miniflux.app/v2/internal/cli"
 
 import (
+	"context"
 	"log/slog"
 	"sync"
 	"time"
@@ -14,7 +15,7 @@ import (
 	"miniflux.app/v2/internal/storage"
 )
 
-func refreshFeeds(store *storage.Storage) {
+func refreshFeeds(ctx context.Context, store *storage.Storage) {
 	var wg sync.WaitGroup
 
 	startTime := time.Now()
@@ -26,7 +27,7 @@ func refreshFeeds(store *storage.Storage) {
 		WithoutDisabledFeeds().
 		WithNextCheckExpired().
 		WithLimitPerHost(config.Opts.PollingLimitPerHost()).
-		FetchJobs()
+		FetchJobs(ctx)
 	if err != nil {
 		slog.Error("Unable to fetch jobs from database", slog.Any("error", err))
 		return
@@ -52,7 +53,7 @@ func refreshFeeds(store *storage.Storage) {
 					slog.Int("worker_id", workerID),
 				)
 
-				if localizedError := feedHandler.RefreshFeed(store, job.UserID, job.FeedID, false); localizedError != nil {
+				if localizedError := feedHandler.RefreshFeed(ctx, store, job.UserID, job.FeedID, false); localizedError != nil {
 					slog.Warn("Unable to refresh feed",
 						slog.Int64("feed_id", job.FeedID),
 						slog.Int64("user_id", job.UserID),

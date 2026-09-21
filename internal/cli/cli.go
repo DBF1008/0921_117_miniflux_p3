@@ -4,6 +4,7 @@
 package cli // import "miniflux.app/v2/internal/cli"
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -166,6 +167,7 @@ func Parse() {
 	defer db.Close()
 
 	store := storage.NewStorage(db)
+	ctx := context.Background()
 
 	if err := store.Ping(); err != nil {
 		printErrorAndExit(err)
@@ -179,36 +181,36 @@ func Parse() {
 	}
 
 	if flagResetFeedErrors {
-		if err := store.ResetFeedErrors(); err != nil {
+		if err := store.ResetFeedErrors(ctx); err != nil {
 			printErrorAndExit(err)
 		}
 		return
 	}
 
 	if flagResetFeedNextCheckAt {
-		if err := store.ResetNextCheckAt(); err != nil {
+		if err := store.ResetNextCheckAt(ctx); err != nil {
 			printErrorAndExit(err)
 		}
 		return
 	}
 
 	if flagExportUserFeeds != "" {
-		exportUserFeeds(store, flagExportUserFeeds)
+		exportUserFeeds(ctx, store, flagExportUserFeeds)
 		return
 	}
 
 	if flagFlushSessions {
-		flushSessions(store)
+		flushSessions(ctx, store)
 		return
 	}
 
 	if flagCreateAdmin {
-		createAdminUserFromInteractiveTerminal(store)
+		createAdminUserFromInteractiveTerminal(ctx, store)
 		return
 	}
 
 	if flagResetPassword {
-		resetPassword(store)
+		resetPassword(ctx, store)
 		return
 	}
 
@@ -224,7 +226,7 @@ func Parse() {
 	}
 
 	if config.Opts.CreateAdmin() {
-		createAdminUserFromEnvironmentVariables(store)
+		createAdminUserFromEnvironmentVariables(ctx, store)
 	}
 
 	if config.Opts.HasHTTPClientProxiesConfigured() {
@@ -236,16 +238,16 @@ func Parse() {
 	}
 
 	if flagRefreshFeeds {
-		refreshFeeds(store)
+		refreshFeeds(ctx, store)
 		return
 	}
 
 	if flagRunCleanupTasks {
-		runCleanupTasks(store)
+		runCleanupTasks(ctx, store)
 		return
 	}
 
-	startDaemon(store)
+	startDaemon(ctx, store)
 }
 
 func printErrorAndExit(err error) {

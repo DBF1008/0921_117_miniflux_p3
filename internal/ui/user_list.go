@@ -12,7 +12,7 @@ import (
 )
 
 func (h *handler) showUsersPage(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -23,7 +23,7 @@ func (h *handler) showUsersPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := h.store.Users()
+	users, err := h.store.Users(r.Context(), )
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -35,7 +35,7 @@ func (h *handler) showUsersPage(w http.ResponseWriter, r *http.Request) {
 	view.Set("users", users)
 	view.Set("menu", "settings")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 

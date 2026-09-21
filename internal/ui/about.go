@@ -15,13 +15,13 @@ import (
 )
 
 func (h *handler) showAboutPage(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
 	}
 
-	dbSize, dbErr := h.store.DBSize()
+	dbSize, dbErr := h.store.DBSize(r.Context(), )
 
 	view := view.New(h.tpl, r)
 	view.Set("version", version.Version)
@@ -29,11 +29,11 @@ func (h *handler) showAboutPage(w http.ResponseWriter, r *http.Request) {
 	view.Set("build_date", version.BuildDate)
 	view.Set("menu", "settings")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 	view.Set("globalConfigOptions", config.Opts.ConfigMap(true))
-	view.Set("postgres_version", h.store.DatabaseVersion())
+	view.Set("postgres_version", h.store.DatabaseVersion(r.Context(), ))
 	view.Set("go_version", runtime.Version())
 
 	if dbErr != nil {

@@ -15,7 +15,7 @@ import (
 )
 
 func (h *handler) saveAPIKey(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -26,12 +26,12 @@ func (h *handler) saveAPIKey(w http.ResponseWriter, r *http.Request) {
 		Description: apiKeyForm.Description,
 	}
 
-	if validationErr := validator.ValidateAPIKeyCreation(h.store, user.ID, apiKeyCreationRequest); validationErr != nil {
+	if validationErr := validator.ValidateAPIKeyCreation(r.Context(), h.store, user.ID, apiKeyCreationRequest); validationErr != nil {
 		view := view.New(h.tpl, r)
 		view.Set("form", apiKeyForm)
 		view.Set("menu", "settings")
 		view.Set("user", user)
-		navMetadata, _ := h.store.GetNavMetadata(user.ID)
+		navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 		view.Set("countUnread", navMetadata.CountUnread)
 		view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 		view.Set("errorMessage", validationErr.Translate(user.Language))
@@ -39,7 +39,7 @@ func (h *handler) saveAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err = h.store.CreateAPIKey(user.ID, apiKeyCreationRequest.Description); err != nil {
+	if _, err = h.store.CreateAPIKey(r.Context(), user.ID, apiKeyCreationRequest.Description); err != nil {
 		response.HTMLServerError(w, r, err)
 		return
 	}

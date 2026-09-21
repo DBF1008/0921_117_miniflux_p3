@@ -3,7 +3,7 @@
 
 package storage // import "miniflux.app/v2/internal/storage"
 
-import (
+import (	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -108,25 +108,25 @@ func (e *entryPaginationBuilder) WithGloballyVisible() *entryPaginationBuilder {
 }
 
 // Entries returns previous and next entries.
-func (e *entryPaginationBuilder) Entries() (*model.Entry, *model.Entry, error) {
-	tx, err := e.db.Begin()
+func (e *entryPaginationBuilder) Entries(ctx context.Context) (*model.Entry, *model.Entry, error) {
+	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("begin transaction for entry pagination: %v", err)
 	}
 
-	prevID, nextID, err := e.getPrevNextID(tx)
+	prevID, nextID, err := e.getPrevNextID(ctx, tx)
 	if err != nil {
 		tx.Rollback()
 		return nil, nil, err
 	}
 
-	prevEntry, err := e.getEntry(tx, prevID)
+	prevEntry, err := e.getEntry(ctx, tx, prevID)
 	if err != nil {
 		tx.Rollback()
 		return nil, nil, err
 	}
 
-	nextEntry, err := e.getEntry(tx, nextID)
+	nextEntry, err := e.getEntry(ctx, tx, nextID)
 	if err != nil {
 		tx.Rollback()
 		return nil, nil, err
@@ -141,7 +141,7 @@ func (e *entryPaginationBuilder) Entries() (*model.Entry, *model.Entry, error) {
 	return prevEntry, nextEntry, nil
 }
 
-func (e *entryPaginationBuilder) getPrevNextID(tx *sql.Tx) (prevID int64, nextID int64, err error) {
+func (e *entryPaginationBuilder) getPrevNextID(ctx context.Context, tx *sql.Tx) (prevID int64, nextID int64, err error) {
 	cte := `
 		WITH entry_pagination AS (
 			SELECT
@@ -163,7 +163,7 @@ func (e *entryPaginationBuilder) getPrevNextID(tx *sql.Tx) (prevID int64, nextID
 	e.args = append(e.args, e.entryID)
 
 	var pID, nID sql.NullInt64
-	err = tx.QueryRow(query, e.args...).Scan(&pID, &nID)
+	err = tx.QueryRowContext(ctx, query, e.args...).Scan(&pID, &nID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return 0, 0, nil
@@ -182,10 +182,10 @@ func (e *entryPaginationBuilder) getPrevNextID(tx *sql.Tx) (prevID int64, nextID
 	return prevID, nextID, nil
 }
 
-func (e *entryPaginationBuilder) getEntry(tx *sql.Tx, entryID int64) (*model.Entry, error) {
+func (e *entryPaginationBuilder) getEntry(ctx context.Context, tx *sql.Tx, entryID int64) (*model.Entry, error) {
 	var entry model.Entry
 
-	err := tx.QueryRow(`SELECT id, title FROM entries WHERE id = $1`, entryID).Scan(
+	err := tx.QueryRowContext(ctx, `SELECT id, title FROM entries WHERE id = $1`, entryID).Scan(
 		&entry.ID,
 		&entry.Title,
 	)

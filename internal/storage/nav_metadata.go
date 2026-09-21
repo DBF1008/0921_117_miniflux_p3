@@ -3,7 +3,7 @@
 
 package storage // import "miniflux.app/v2/internal/storage"
 
-import (
+import (	"context"
 	"log/slog"
 
 	"miniflux.app/v2/internal/config"
@@ -17,7 +17,7 @@ type NavMetadata struct {
 
 // GetNavMetadata returns the navigation metadata for the given user in a
 // single SQL query.
-func (s *Storage) GetNavMetadata(userID int64) (NavMetadata, error) {
+func (s *Storage) GetNavMetadata(ctx context.Context, userID int64) (NavMetadata, error) {
 	query := `
 		SELECT
 			(SELECT count(*)
@@ -76,7 +76,7 @@ func (s *Storage) GetNavMetadata(userID int64) (NavMetadata, error) {
 	var countUnread, countErrorFeeds int
 	var hasSaveEntry bool
 
-	err := s.db.QueryRow(query, userID, config.Opts.PollingParsingErrorLimit()).Scan(
+	err := s.db.QueryRowContext(ctx, query, userID, config.Opts.PollingParsingErrorLimit()).Scan(
 		&countUnread,
 		&hasSaveEntry,
 		&countErrorFeeds,

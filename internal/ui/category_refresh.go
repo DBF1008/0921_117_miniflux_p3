@@ -42,7 +42,7 @@ func (h *handler) refreshCategory(w http.ResponseWriter, r *http.Request) int64 
 			WithUserID(userID).
 			WithCategoryID(categoryID).
 			WithLimitPerHost(config.Opts.PollingLimitPerHost()).
-			FetchJobs()
+			FetchJobs(r.Context())
 		if err != nil {
 			response.HTMLServerError(w, r, err)
 			return 0

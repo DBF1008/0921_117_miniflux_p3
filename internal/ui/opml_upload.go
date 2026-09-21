@@ -19,7 +19,7 @@ import (
 )
 
 func (h *handler) uploadOPML(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -46,7 +46,7 @@ func (h *handler) uploadOPML(w http.ResponseWriter, r *http.Request) {
 	view := view.New(h.tpl, r)
 	view.Set("menu", "feeds")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 
@@ -56,7 +56,7 @@ func (h *handler) uploadOPML(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if impErr := opml.NewHandler(h.store).Import(user.ID, file); impErr != nil {
+	if impErr := opml.NewHandler(h.store).Import(r.Context(), user.ID, file); impErr != nil {
 		view.Set("errorMessage", impErr)
 		response.HTML(w, r, view.Render("import"))
 		return
@@ -66,7 +66,7 @@ func (h *handler) uploadOPML(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) fetchOPML(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -86,7 +86,7 @@ func (h *handler) fetchOPML(w http.ResponseWriter, r *http.Request) {
 	view := view.New(h.tpl, r)
 	view.Set("menu", "feeds")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 
@@ -104,7 +104,7 @@ func (h *handler) fetchOPML(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if impErr := opml.NewHandler(h.store).Import(user.ID, responseHandler.Body(config.Opts.HTTPClientMaxBodySize())); impErr != nil {
+	if impErr := opml.NewHandler(h.store).Import(r.Context(), user.ID, responseHandler.Body(config.Opts.HTTPClientMaxBodySize())); impErr != nil {
 		view.Set("errorMessage", impErr)
 		response.HTML(w, r, view.Render("import"))
 		return

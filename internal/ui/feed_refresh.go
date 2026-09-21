@@ -18,7 +18,7 @@ import (
 func (h *handler) refreshFeed(w http.ResponseWriter, r *http.Request) {
 	feedID := request.RouteInt64Param(r, "feedID")
 	forceRefresh := request.QueryBoolParam(r, "forceRefresh", false)
-	if localizedError := feedHandler.RefreshFeed(h.store, request.UserID(r), feedID, forceRefresh); localizedError != nil {
+	if localizedError := feedHandler.RefreshFeed(r.Context(), h.store, request.UserID(r), feedID, forceRefresh); localizedError != nil {
 		slog.Warn("Unable to refresh feed",
 			slog.Int64("user_id", request.UserID(r)),
 			slog.Int64("feed_id", feedID),
@@ -46,7 +46,7 @@ func (h *handler) refreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 			WithoutDisabledFeeds().
 			WithUserID(userID).
 			WithLimitPerHost(config.Opts.PollingLimitPerHost()).
-			FetchJobs()
+			FetchJobs(r.Context())
 		if err != nil {
 			response.HTMLServerError(w, r, err)
 			return

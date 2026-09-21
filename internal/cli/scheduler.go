@@ -4,6 +4,7 @@
 package cli // import "miniflux.app/v2/internal/cli"
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
@@ -12,10 +13,11 @@ import (
 	"miniflux.app/v2/internal/worker"
 )
 
-func runScheduler(store *storage.Storage, pool *worker.Pool) {
+func runScheduler(ctx context.Context, store *storage.Storage, pool *worker.Pool) {
 	slog.Debug(`Starting background scheduler...`)
 
 	go feedScheduler(
+		ctx,
 		store,
 		pool,
 		config.Opts.PollingFrequency(),
@@ -25,12 +27,13 @@ func runScheduler(store *storage.Storage, pool *worker.Pool) {
 	)
 
 	go cleanupScheduler(
+		ctx,
 		store,
 		config.Opts.CleanupFrequency(),
 	)
 }
 
-func feedScheduler(store *storage.Storage, pool *worker.Pool, frequency time.Duration, batchSize, errorLimit, limitPerHost int) {
+func feedScheduler(ctx context.Context, store *storage.Storage, pool *worker.Pool, frequency time.Duration, batchSize, errorLimit, limitPerHost int) {
 	for range time.Tick(frequency) {
 		// Generate a batch of feeds for any user that has feeds to refresh.
 		jobs, err := store.NewBatchBuilder().
@@ -39,7 +42,7 @@ func feedScheduler(store *storage.Storage, pool *worker.Pool, frequency time.Dur
 			WithoutDisabledFeeds().
 			WithNextCheckExpired().
 			WithLimitPerHost(limitPerHost).
-			FetchJobs()
+			FetchJobs(ctx)
 
 		if err != nil {
 			slog.Error("Unable to fetch jobs from database", slog.Any("error", err))
@@ -50,8 +53,8 @@ func feedScheduler(store *storage.Storage, pool *worker.Pool, frequency time.Dur
 	}
 }
 
-func cleanupScheduler(store *storage.Storage, frequency time.Duration) {
+func cleanupScheduler(ctx context.Context, store *storage.Storage, frequency time.Duration) {
 	for range time.Tick(frequency) {
-		runCleanupTasks(store)
+		runCleanupTasks(ctx, store)
 	}
 }

@@ -3,7 +3,7 @@
 
 package storage // import "miniflux.app/v2/internal/storage"
 
-import (
+import (	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -222,7 +222,7 @@ func (e *EntryQueryBuilder) WithGloballyVisible() *EntryQueryBuilder {
 }
 
 // CountEntries count the number of entries that match the condition.
-func (e *EntryQueryBuilder) CountEntries() (count int, err error) {
+func (e *EntryQueryBuilder) CountEntries(ctx context.Context) (count int, err error) {
 	query := `
 		SELECT count(*)
 		FROM entries e
@@ -230,7 +230,7 @@ func (e *EntryQueryBuilder) CountEntries() (count int, err error) {
 			JOIN categories c ON c.id = f.category_id
 		WHERE ` + e.buildCondition()
 
-	err = e.store.db.QueryRow(query, e.args...).Scan(&count)
+	err = e.store.db.QueryRowContext(ctx, query, e.args...).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("store: unable to count entries: %v", err)
 	}
@@ -239,9 +239,9 @@ func (e *EntryQueryBuilder) CountEntries() (count int, err error) {
 }
 
 // GetEntry returns a single entry that match the condition.
-func (e *EntryQueryBuilder) GetEntry() (*model.Entry, error) {
+func (e *EntryQueryBuilder) GetEntry(ctx context.Context) (*model.Entry, error) {
 	e.limit = 1
-	entries, err := e.GetEntries()
+	entries, err := e.GetEntries(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func (e *EntryQueryBuilder) GetEntry() (*model.Entry, error) {
 		return nil, nil
 	}
 
-	entries[0].Enclosures, err = e.store.GetEnclosures(entries[0].ID)
+	entries[0].Enclosures, err = e.store.GetEnclosures(ctx, entries[0].ID)
 	if err != nil {
 		return nil, err
 	}
@@ -259,22 +259,22 @@ func (e *EntryQueryBuilder) GetEntry() (*model.Entry, error) {
 }
 
 // GetEntries returns a list of entries that match the condition.
-func (e *EntryQueryBuilder) GetEntries() (model.Entries, error) {
-	entries, _, err := e.fetchEntries(false)
+func (e *EntryQueryBuilder) GetEntries(ctx context.Context) (model.Entries, error) {
+	entries, _, err := e.fetchEntries(ctx, false)
 	return entries, err
 }
 
 // GetEntriesWithCount returns a list of entries and the total count of matching
 // rows (ignoring limit/offset) in a single query using a window function.
 // This avoids a separate CountEntries() round-trip.
-func (e *EntryQueryBuilder) GetEntriesWithCount() (model.Entries, int, error) {
-	return e.fetchEntries(true)
+func (e *EntryQueryBuilder) GetEntriesWithCount(ctx context.Context) (model.Entries, int, error) {
+	return e.fetchEntries(ctx, true)
 }
 
 // fetchEntries is the shared implementation for GetEntries and GetEntriesWithCount.
 // When withCount is true, count(*) OVER() is included in the SELECT and the total
 // count of matching rows is returned; otherwise the returned count is 0.
-func (e *EntryQueryBuilder) fetchEntries(withCount bool) (model.Entries, int, error) {
+func (e *EntryQueryBuilder) fetchEntries(ctx context.Context, withCount bool) (model.Entries, int, error) {
 	countColumn := ""
 	if withCount {
 		countColumn = "count(*) OVER(),"
@@ -333,7 +333,7 @@ func (e *EntryQueryBuilder) fetchEntries(withCount bool) (model.Entries, int, er
 			users u ON u.id=e.user_id
 		WHERE ` + e.buildCondition() + " " + e.buildSorting()
 
-	rows, err := e.store.db.Query(query, e.args...)
+	rows, err := e.store.db.QueryContext(ctx, query, e.args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("store: unable to get entries: %v", err)
 	}
@@ -425,7 +425,7 @@ func (e *EntryQueryBuilder) fetchEntries(withCount bool) (model.Entries, int, er
 	}
 
 	if e.fetchEnclosures && len(entryIDs) > 0 {
-		enclosures, err := e.store.GetEnclosuresForEntries(entryIDs)
+		enclosures, err := e.store.GetEnclosuresForEntries(ctx, entryIDs)
 		if err != nil {
 			return nil, 0, fmt.Errorf("store: unable to fetch enclosures: %w", err)
 		}
@@ -441,7 +441,7 @@ func (e *EntryQueryBuilder) fetchEntries(withCount bool) (model.Entries, int, er
 }
 
 // GetEntryIDs returns a list of entry IDs that match the condition.
-func (e *EntryQueryBuilder) GetEntryIDs() ([]int64, error) {
+func (e *EntryQueryBuilder) GetEntryIDs(ctx context.Context) ([]int64, error) {
 	query := `
 		SELECT
 			e.id
@@ -453,7 +453,7 @@ func (e *EntryQueryBuilder) GetEntryIDs() ([]int64, error) {
 			f.id=e.feed_id
 		WHERE ` + e.buildCondition() + " " + e.buildSorting()
 
-	rows, err := e.store.db.Query(query, e.args...)
+	rows, err := e.store.db.QueryContext(ctx, query, e.args...)
 	if err != nil {
 		return nil, fmt.Errorf("store: unable to get entries: %v", err)
 	}

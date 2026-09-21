@@ -16,14 +16,14 @@ import (
 )
 
 func (h *handler) updateFeed(w http.ResponseWriter, r *http.Request) {
-	loggedUser, err := h.store.UserByID(request.UserID(r))
+	loggedUser, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
 	}
 
 	feedID := request.RouteInt64Param(r, "feedID")
-	feed, err := h.store.FeedByID(loggedUser.ID, feedID)
+	feed, err := h.store.FeedByID(r.Context(), loggedUser.ID, feedID)
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -34,7 +34,7 @@ func (h *handler) updateFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	categories, err := h.store.Categories(loggedUser.ID)
+	categories, err := h.store.Categories(r.Context(), loggedUser.ID)
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -48,7 +48,7 @@ func (h *handler) updateFeed(w http.ResponseWriter, r *http.Request) {
 	view.Set("feed", feed)
 	view.Set("menu", "feeds")
 	view.Set("user", loggedUser)
-	navMetadata, _ := h.store.GetNavMetadata(loggedUser.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), loggedUser.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 	view.Set("defaultUserAgent", config.Opts.HTTPClientUserAgent())
@@ -65,13 +65,13 @@ func (h *handler) updateFeed(w http.ResponseWriter, r *http.Request) {
 		ProxyURL:        model.OptionalString(feedForm.ProxyURL),
 	}
 
-	if validationErr := validator.ValidateFeedModification(h.store, loggedUser.ID, feed.ID, feedModificationRequest); validationErr != nil {
+	if validationErr := validator.ValidateFeedModification(r.Context(), h.store, loggedUser.ID, feed.ID, feedModificationRequest); validationErr != nil {
 		view.Set("errorMessage", validationErr.Translate(loggedUser.Language))
 		response.HTML(w, r, view.Render("edit_feed"))
 		return
 	}
 
-	err = h.store.UpdateFeed(feedForm.Merge(feed))
+	err = h.store.UpdateFeed(r.Context(), feedForm.Merge(feed))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return

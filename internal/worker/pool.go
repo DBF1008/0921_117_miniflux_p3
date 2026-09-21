@@ -4,6 +4,7 @@
 package worker // import "miniflux.app/v2/internal/worker"
 
 import (
+	"context"
 	"sync"
 
 	"miniflux.app/v2/internal/model"
@@ -30,14 +31,14 @@ func (p *Pool) Shutdown() {
 }
 
 // NewPool creates a pool of background workers.
-func NewPool(store *storage.Storage, nbWorkers int) *Pool {
+func NewPool(ctx context.Context, store *storage.Storage, nbWorkers int) *Pool {
 	workerPool := &Pool{
 		queue: make(chan model.Job),
 	}
 
 	for i := range nbWorkers {
 		workerPool.wg.Add(1)
-		worker := &worker{id: i, store: store}
+		worker := &worker{id: i, ctx: ctx, store: store}
 		go worker.Run(workerPool.queue, &workerPool.wg)
 	}
 

@@ -12,14 +12,14 @@ import (
 )
 
 func (h *handler) showCategoryFeedsPage(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
 	}
 
 	categoryID := request.RouteInt64Param(r, "categoryID")
-	category, err := h.store.Category(request.UserID(r), categoryID)
+	category, err := h.store.Category(r.Context(), request.UserID(r), categoryID)
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -30,7 +30,7 @@ func (h *handler) showCategoryFeedsPage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	feeds, err := h.store.FeedsByCategoryWithCounters(user.ID, categoryID)
+	feeds, err := h.store.FeedsByCategoryWithCounters(r.Context(), user.ID, categoryID)
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -42,7 +42,7 @@ func (h *handler) showCategoryFeedsPage(w http.ResponseWriter, r *http.Request) 
 	view.Set("total", len(feeds))
 	view.Set("menu", "categories")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 

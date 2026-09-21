@@ -125,7 +125,7 @@ func (m *authMiddleware) serveValidated(w http.ResponseWriter, r *http.Request, 
 	var integration *model.Integration
 	var user *model.User
 	var err error
-	if integration, err = m.store.GoogleReaderUserGetIntegration(parts[0]); err != nil {
+	if integration, err = m.store.GoogleReaderUserGetIntegration(r.Context(), parts[0]); err != nil {
 		slog.Warn("[GoogleReader] No user found with the given Google Reader username",
 			slog.Bool("authentication_failed", true),
 			slog.String("client_ip", clientIP),
@@ -145,7 +145,7 @@ func (m *authMiddleware) serveValidated(w http.ResponseWriter, r *http.Request, 
 		sendUnauthorizedResponse(w, r)
 		return
 	}
-	if user, err = m.store.UserByID(integration.UserID); err != nil {
+	if user, err = m.store.UserByID(r.Context(), integration.UserID); err != nil {
 		slog.Error("[GoogleReader] Unable to fetch user from database",
 			slog.Bool("authentication_failed", true),
 			slog.String("client_ip", clientIP),
@@ -166,7 +166,7 @@ func (m *authMiddleware) serveValidated(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	m.store.SetLastLogin(integration.UserID)
+	m.store.SetLastLogin(r.Context(), integration.UserID)
 
 	ctx := r.Context()
 	ctx = context.WithValue(ctx, request.UserIDContextKey, user.ID)

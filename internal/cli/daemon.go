@@ -20,17 +20,16 @@ import (
 	"miniflux.app/v2/internal/worker"
 )
 
-func startDaemon(store *storage.Storage) {
+func startDaemon(ctx context.Context, store *storage.Storage) {
 	slog.Debug("Starting daemon...")
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
-	signal.Notify(stop, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	pool := worker.NewPool(store, config.Opts.WorkerPoolSize())
+	pool := worker.NewPool(ctx, store, config.Opts.WorkerPoolSize())
 
 	if config.Opts.HasSchedulerService() && !config.Opts.HasMaintenanceMode() {
-		runScheduler(store, pool)
+		runScheduler(ctx, store, pool)
 	}
 
 	var httpServers []*http.Server
@@ -38,7 +37,7 @@ func startDaemon(store *storage.Storage) {
 		httpServers = server.StartWebServer(store, pool)
 	}
 
-	metricsCtx, cancelMetrics := context.WithCancel(context.Background())
+	metricsCtx, cancelMetrics := context.WithCancel(ctx)
 	if config.Opts.HasMetricsCollector() {
 		collector := metric.NewCollector(store, config.Opts.MetricsRefreshInterval())
 		go collector.GatherStorageMetrics(metricsCtx)
@@ -74,17 +73,17 @@ func startDaemon(store *storage.Storage) {
 		}
 	}
 
-	<-stop
+	<-ctx.Done()
 	slog.Debug("Shutting down the process")
 	cancelMetrics()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if len(httpServers) > 0 {
 		slog.Debug("Shutting down HTTP servers...")
 		for _, server := range httpServers {
 			if server != nil {
-				if err := server.Shutdown(ctx); err != nil {
+				if err := server.Shutdown(shutdownCtx); err != nil {
 					slog.Error("HTTP server shutdown error", slog.Any("error", err), slog.String("addr", server.Addr))
 				}
 			}

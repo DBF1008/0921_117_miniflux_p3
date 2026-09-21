@@ -4,6 +4,7 @@
 package worker // import "miniflux.app/v2/internal/worker"
 
 import (
+	"context"
 	"log/slog"
 	"sync"
 	"time"
@@ -17,6 +18,7 @@ import (
 
 type worker struct {
 	id    int
+	ctx   context.Context
 	store *storage.Storage
 }
 
@@ -37,7 +39,7 @@ func (w *worker) Run(c <-chan model.Job, wg *sync.WaitGroup) {
 		)
 
 		startTime := time.Now()
-		localizedError := feedHandler.RefreshFeed(w.store, job.UserID, job.FeedID, false)
+		localizedError := feedHandler.RefreshFeed(w.ctx, w.store, job.UserID, job.FeedID, false)
 
 		if config.Opts.HasMetricsCollector() {
 			status := metric.StatusSuccess

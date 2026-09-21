@@ -3,7 +3,7 @@
 
 package storage // import "miniflux.app/v2/internal/storage"
 
-import (
+import (	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -121,9 +121,9 @@ func (f *feedQueryBuilder) buildSorting() string {
 }
 
 // GetFeed returns a single feed that match the condition.
-func (f *feedQueryBuilder) GetFeed() (*model.Feed, error) {
+func (f *feedQueryBuilder) GetFeed(ctx context.Context) (*model.Feed, error) {
 	f.limit = 1
-	feeds, err := f.GetFeeds()
+	feeds, err := f.GetFeeds(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (f *feedQueryBuilder) GetFeed() (*model.Feed, error) {
 }
 
 // GetFeeds returns a list of feeds that match the condition.
-func (f *feedQueryBuilder) GetFeeds() (model.Feeds, error) {
+func (f *feedQueryBuilder) GetFeeds(ctx context.Context) (model.Feeds, error) {
 	query := `
 		SELECT
 			f.id,
@@ -201,12 +201,12 @@ func (f *feedQueryBuilder) GetFeeds() (model.Feeds, error) {
 
 	query = fmt.Sprintf(query, f.buildCondition(), f.buildSorting())
 
-	readCounters, unreadCounters, err := f.fetchFeedCounter()
+	readCounters, unreadCounters, err := f.fetchFeedCounter(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := f.db.Query(query, f.args...)
+	rows, err := f.db.QueryContext(ctx, query, f.args...)
 	if err != nil {
 		return nil, fmt.Errorf(`store: unable to fetch feeds: %w`, err)
 	}
@@ -299,7 +299,7 @@ func (f *feedQueryBuilder) GetFeeds() (model.Feeds, error) {
 	return feeds, nil
 }
 
-func (f *feedQueryBuilder) fetchFeedCounter() (unreadCounters map[int64]int, readCounters map[int64]int, err error) {
+func (f *feedQueryBuilder) fetchFeedCounter(ctx context.Context) (unreadCounters map[int64]int, readCounters map[int64]int, err error) {
 	if !f.withCounters {
 		return nil, nil, nil
 	}
@@ -322,7 +322,7 @@ func (f *feedQueryBuilder) fetchFeedCounter() (unreadCounters map[int64]int, rea
 	}
 	query = fmt.Sprintf(query, join, f.buildCounterCondition())
 
-	rows, err := f.db.Query(query, f.counterArgs...)
+	rows, err := f.db.QueryContext(ctx, query, f.counterArgs...)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`store: unable to fetch feed counts: %w`, err)
 	}

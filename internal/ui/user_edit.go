@@ -14,7 +14,7 @@ import (
 
 // EditUser shows the form to edit a user.
 func (h *handler) showEditUserPage(w http.ResponseWriter, r *http.Request) {
-	user, err := h.store.UserByID(request.UserID(r))
+	user, err := h.store.UserByID(r.Context(), request.UserID(r))
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -26,7 +26,7 @@ func (h *handler) showEditUserPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := request.RouteInt64Param(r, "userID")
-	selectedUser, err := h.store.UserByID(userID)
+	selectedUser, err := h.store.UserByID(r.Context(), userID)
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
@@ -47,7 +47,7 @@ func (h *handler) showEditUserPage(w http.ResponseWriter, r *http.Request) {
 	view.Set("selected_user", selectedUser)
 	view.Set("menu", "settings")
 	view.Set("user", user)
-	navMetadata, _ := h.store.GetNavMetadata(user.ID)
+	navMetadata, _ := h.store.GetNavMetadata(r.Context(), user.ID)
 	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
 

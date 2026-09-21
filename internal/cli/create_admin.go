@@ -4,6 +4,7 @@
 package cli // import "miniflux.app/v2/internal/cli"
 
 import (
+	"context"
 	"log/slog"
 
 	"miniflux.app/v2/internal/config"
@@ -12,34 +13,34 @@ import (
 	"miniflux.app/v2/internal/validator"
 )
 
-func createAdminUserFromEnvironmentVariables(store *storage.Storage) {
-	createAdminUser(store, config.Opts.AdminUsername(), config.Opts.AdminPassword())
+func createAdminUserFromEnvironmentVariables(ctx context.Context, store *storage.Storage) {
+	createAdminUser(ctx, store, config.Opts.AdminUsername(), config.Opts.AdminPassword())
 }
 
-func createAdminUserFromInteractiveTerminal(store *storage.Storage) {
+func createAdminUserFromInteractiveTerminal(ctx context.Context, store *storage.Storage) {
 	username, password := askCredentials()
-	createAdminUser(store, username, password)
+	createAdminUser(ctx, store, username, password)
 }
 
-func createAdminUser(store *storage.Storage, username, password string) {
+func createAdminUser(ctx context.Context, store *storage.Storage, username, password string) {
 	userCreationRequest := &model.UserCreationRequest{
 		Username: username,
 		Password: password,
 		IsAdmin:  true,
 	}
 
-	if store.UserExists(userCreationRequest.Username) {
+	if store.UserExists(ctx, userCreationRequest.Username) {
 		slog.Info("Skipping admin user creation because it already exists",
 			slog.String("username", userCreationRequest.Username),
 		)
 		return
 	}
 
-	if validationErr := validator.ValidateUserCreationWithPassword(store, userCreationRequest); validationErr != nil {
+	if validationErr := validator.ValidateUserCreationWithPassword(ctx, store, userCreationRequest); validationErr != nil {
 		printErrorAndExit(validationErr.Error())
 	}
 
-	if user, err := store.CreateUser(userCreationRequest); err != nil {
+	if user, err := store.CreateUser(ctx, userCreationRequest); err != nil {
 		printErrorAndExit(err)
 	} else {
 		slog.Info("Created new admin user",

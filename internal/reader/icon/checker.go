@@ -4,6 +4,7 @@
 package icon // import "miniflux.app/v2/internal/reader/icon"
 
 import (
+	"context"
 	"log/slog"
 
 	"miniflux.app/v2/internal/config"
@@ -25,7 +26,7 @@ func NewIconChecker(store *storage.Storage, feed *model.Feed) *iconChecker {
 	}
 }
 
-func (c *iconChecker) UpdateOrCreateFeedIcon() {
+func (c *iconChecker) UpdateOrCreateFeedIcon(ctx context.Context) {
 	requestBuilder := fetcher.NewRequestBuilder()
 	requestBuilder.WithUserAgent(c.feed.UserAgent, config.Opts.HTTPClientUserAgent())
 	requestBuilder.WithCookie(c.feed.Cookie)
@@ -52,7 +53,7 @@ func (c *iconChecker) UpdateOrCreateFeedIcon() {
 			slog.String("feed_icon_url", c.feed.IconURL),
 		)
 	} else {
-		if err := c.store.StoreFeedIcon(c.feed.ID, icon); err != nil {
+		if err := c.store.StoreFeedIcon(ctx, c.feed.ID, icon); err != nil {
 			slog.Error("Unable to store feed icon",
 				slog.Int64("feed_id", c.feed.ID),
 				slog.String("website_url", c.feed.SiteURL),
@@ -71,13 +72,13 @@ func (c *iconChecker) UpdateOrCreateFeedIcon() {
 	}
 }
 
-func (c *iconChecker) CreateFeedIconIfMissing() {
-	if c.store.HasFeedIcon(c.feed.ID) {
+func (c *iconChecker) CreateFeedIconIfMissing(ctx context.Context) {
+	if c.store.HasFeedIcon(ctx, c.feed.ID) {
 		slog.Debug("Feed icon already exists",
 			slog.Int64("feed_id", c.feed.ID),
 		)
 		return
 	}
 
-	c.UpdateOrCreateFeedIcon()
+	c.UpdateOrCreateFeedIcon(ctx)
 }
